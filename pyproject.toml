@@ -1,0 +1,33 @@
+[project]
+name = "artsnavn-kontroll"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Francesco Frassinelli", email = "francesco.frassinelli@nina.no"},
+]
+dependencies = [
+    "pywebio",
+    "requests"
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "GPLv3"}
+
+[project.scripts]
+artsnavn-kontroll = "webapp:main"
+
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+
+[tool.isort]
+# https://pycqa.github.io/isort/docs/configuration/black_compatibility.html
+profile = "black"
+
+[tool.ruff]
+fix = true
+ignore = ["E501"]

@@ -1,0 +1,7 @@
+services:
+  datasette:
+    image: ghcr.io/ninanor/nina-artsdatabanken-common:sha-15f4929
+  artsnavn-kontroll:
+    build: .
+    ports:
+    - 8080:8080
