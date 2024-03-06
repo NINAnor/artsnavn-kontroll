@@ -17,6 +17,7 @@ from pywebio.output import (
     put_progressbar,
     put_success,
     put_table,
+    put_warning,
     set_progressbar,
     use_scope,
 )
@@ -92,7 +93,7 @@ def get_species_data(species):
     specie_ids = []
     for index, specie in enumerate(species):
         result = response[str(index)]["result"][0]
-        specie_ids.append((result["id"], "%d %%" % result["score"]))
+        specie_ids.append((result["id"], result["score"]))
     data = {
         "extend": json.dumps(
             {
@@ -156,6 +157,16 @@ def generate_table(text):
                 "Mer enn %d ligner: tabellen er for stor til å vises." % PREVIEW_SIZE,
             ]
         put_success(*message)
+        worse_score = min(row["Score"] for row in table)
+        if worse_score < 90:
+            put_warning(
+                (
+                    "Linjer med lav Score har blitt oppdaget. "
+                    "Kontroller verdien i Score-kolonnen. "
+                    "Verdiene går fra 0 til 100, der 100 er en perfekt match. "
+                    "Det anbefales å sjekke linjer med poengsum under 90."
+                )
+            )
         if table_preview:
             put_table(
                 table,
