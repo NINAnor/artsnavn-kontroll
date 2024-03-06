@@ -12,6 +12,7 @@ import requests
 from pywebio import start_server
 from pywebio.output import (
     put_button,
+    put_error,
     put_html,
     put_image,
     put_progressbar,
@@ -71,7 +72,9 @@ def webapp():
     set_env(title=TITLE, output_max_width="100%")
     put_html(INTRO)
     put_textarea("species_textarea")
-    put_button("Sjekk artsnavn", onclick=lambda: generate_table(pin.species_textarea))
+    put_button(
+        "Sjekk artsnavn", onclick=lambda: generate_scoped_table(pin.species_textarea)
+    )
 
 
 def get_species(text):
@@ -80,6 +83,10 @@ def get_species(text):
         if not line:
             continue
         yield line
+
+
+class NoMatch(Exception):
+    pass
 
 
 def get_species_data(species):
@@ -95,7 +102,10 @@ def get_species_data(species):
     response = requests.post(ENDPOINT, data=data, headers=headers).json()
     specie_ids = []
     for index, specie in enumerate(species):
-        result = response[str(index)]["result"][0]
+        results = response[str(index)]["result"]
+        if len(results) == 0:
+            raise NoMatch(f'Ingen treff funnet for "{specie}"')
+        result = results[0]
         specie_ids.append((result["id"], result["score"]))
     data = {
         "extend": json.dumps(
@@ -126,7 +136,7 @@ def table_to_csv(table):
 
 
 def generate_table(text):
-    with use_scope("result", clear=True):
+    try:
         put_progressbar("bar", auto_close=True)
         species = list(get_species(text))
         table = []
@@ -178,6 +188,15 @@ def generate_table(text):
                 ]
                 + COLUMNS,
             )
+    except NoMatch as e:
+        put_error(e)
+    finally:
+        set_progressbar("bar", 1)
+
+
+def generate_scoped_table(*args):
+    with use_scope("result", clear=True):
+        generate_table(*args)
 
 
 def main():
