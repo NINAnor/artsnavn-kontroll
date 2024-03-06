@@ -91,19 +91,20 @@ def get_species_data(species):
     response = requests.post(ENDPOINT, data=data, headers=headers).json()
     specie_ids = []
     for index, specie in enumerate(species):
-        specie_ids.append(response[str(index)]["result"][0]["id"])
+        result = response[str(index)]["result"][0]
+        specie_ids.append((result["id"], "%d %%" % result["score"]))
     data = {
         "extend": json.dumps(
             {
-                "ids": specie_ids,
+                "ids": [specie_id for specie_id, _ in specie_ids],
                 "properties": [{"id": column} for column in COLUMNS],
             }
         )
     }
     response = requests.post(ENDPOINT, data=data, headers=headers).json()
-    for specie_id in specie_ids:
+    for specie_id, specie_score in specie_ids:
         attributes = response["rows"][specie_id]
-        table_row = {}
+        table_row = {"Score": specie_score}
         for key, value in attributes.items():
             value = value[0]["str"]  # take the first result
             if value:
@@ -156,7 +157,13 @@ def generate_table(text):
             ]
         put_success(*message)
         if table_preview:
-            put_table(table, header=COLUMNS)
+            put_table(
+                table,
+                header=[
+                    "Score",
+                ]
+                + COLUMNS,
+            )
 
 
 def main():
