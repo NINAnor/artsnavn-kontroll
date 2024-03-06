@@ -86,7 +86,10 @@ def get_species_data(species):
     species_data = []
     data = {
         "queries": json.dumps(
-            {str(index): {"query": specie} for index, specie in enumerate(species)}
+            {
+                str(index): {"query": specie, "limit": 1}
+                for index, specie in enumerate(species)
+            }
         )
     }
     response = requests.post(ENDPOINT, data=data, headers=headers).json()
