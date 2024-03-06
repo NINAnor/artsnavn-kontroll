@@ -11,18 +11,17 @@ from pathlib import Path
 import requests
 from pywebio import start_server
 from pywebio.output import (
-    put_buttons,
-    put_file,
+    put_button,
     put_html,
     put_image,
-    put_info,
     put_progressbar,
+    put_success,
     put_table,
     set_progressbar,
     use_scope,
 )
 from pywebio.pin import pin, put_textarea
-from pywebio.session import run_js, set_env
+from pywebio.session import download, run_js, set_env
 
 ENDPOINT = os.getenv(
     "RECONCILE_ENDPOINT", "http://datasette:8001/common/species/-/reconcile"
@@ -43,13 +42,11 @@ COLUMNS = [
     "PrefferedPopularname",
 ]
 
-TITLE = "Kontroll av artsnavn mot Artsnavnebasen"
+TITLE = "Kontroll av artsnavn"
 INTRO = """
-<h1>Kontroll av artsnavn mot Artsnavnebasen</h1>
+<h1>Kontroll av artsnavn</h1>
 
-<p>Skjemaet bruker Artsdatabanken sine webservices til å sjekke hvert enkelt artsnavn online mot databasen. Lim inn listen med latinske artsnavn under. Når resultatet vises kan du kopiere tabellen og lime inn i excel ved å klikke på knappen.</p>
-
-<p><b>Tips!</b> Lim inn som rein tekst i excel ved å velge "Match Destination Formatting".</p>
+<p>Skjemaet bruker en copi av Artsdatabanken artsnavn til å sjekke hvert enkelt artsnavn online mot databasen. Lim inn listen med latinske artsnavn under. Når resultatet vises kan du kopiere eller last ned tabellen.</p>
 """
 IMAGE = open(Path(__file__).parent / "static/matchdestination.png", "rb").read()
 
@@ -69,25 +66,11 @@ function() {
 """
 
 
-def buttons_callback(value):
-    if value == "check":
-        generate_table(pin.species_textarea)
-    elif value == "copy":
-        run_js(js_copy_table)
-
-
 def webapp():
     set_env(title=TITLE, output_max_width="100%")
     put_html(INTRO)
-    put_image(IMAGE)
     put_textarea("species_textarea")
-    put_buttons(
-        [
-            {"label": "Sjekk artsnavn", "value": "check"},
-            {"label": "Kopier resultat", "value": "copy", "color": "success"},
-        ],
-        onclick=buttons_callback,
-    )
+    put_button("Sjekk artsnavn", onclick=lambda: generate_table(pin.species_textarea))
 
 
 def get_species(text):
@@ -129,6 +112,14 @@ def get_species_data(species):
     return species_data
 
 
+def table_to_csv(table):
+    buffer = io.StringIO()
+    csv_writer = csv.writer(buffer)
+    csv_writer.writerow(COLUMNS)
+    csv_writer.writerows(table)
+    return buffer.getvalue().encode("utf8")
+
+
 def generate_table(text):
     with use_scope("result", clear=True):
         put_progressbar("bar", auto_close=True)
@@ -141,17 +132,31 @@ def generate_table(text):
                 table.extend(species_data)
                 progress = len(table) / len(species)
                 set_progressbar("bar", progress)
-        if len(table) <= PREVIEW_SIZE:
-            put_table(table, header=COLUMNS)
+        message = [
+            "%d ligne(r) behandlet." % len(table),
+            put_button(
+                "Last ned CSV", lambda: download("arter.csv", table_to_csv(table))
+            ),
+        ]
+        table_preview = len(table) <= PREVIEW_SIZE
+        if table_preview:
+            message[1:1] = [
+                put_html(
+                    """<b>Tips!</b> Lim inn som rein tekst i Excel ved å velge "Match Destination Formatting"."""
+                ),
+                put_image(IMAGE),
+                put_button(
+                    "Kopier resultat",
+                    onclick=lambda: run_js(js_copy_table),
+                ),
+            ]
         else:
-            buffer = io.StringIO()
-            csv_writer = csv.writer(buffer)
-            csv_writer.writerow(COLUMNS)
-            csv_writer.writerows(table)
-            put_info(
-                "Mer enn %d arter: tabellen er for stor til å vises." % PREVIEW_SIZE,
-                put_file("arter.csv", buffer.getvalue().encode("utf8"), "Last ned CSV"),
-            )
+            message[1:1] = [
+                "Mer enn %d ligner: tabellen er for stor til å vises." % PREVIEW_SIZE,
+            ]
+        put_success(*message)
+        if table_preview:
+            put_table(table, header=COLUMNS)
 
 
 def main():
