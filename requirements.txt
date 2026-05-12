@@ -12,7 +12,7 @@ tornado==6.4
     # via pywebio
 ua-parser==0.18.0
     # via user-agents
-urllib3==2.2.1
+urllib3==2.7.0
     # via requests
 user-agents==2.2.0
     # via pywebio
